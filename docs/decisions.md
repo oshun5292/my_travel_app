@@ -34,3 +34,8 @@
 - **注意**: キーは完成した JavaScript に埋め込まれるため、公開サイトでは誰でも見える。守るのは CARTO 側の Referer 制限で、公開後に設定する。
 - **（2026-10-26 更新）Referer 制限の書式と運用**: 書式はホスト名のみ（`oshun5292.github.io`。`https://` やパス、ポートは書かない）。`localhost` を許可するキーに公開サイトのホストは併記できないため、**キーを2本に分ける**。本番用（Referer: `oshun5292.github.io`）は GitHub の Secret `CARTO_API_KEY`、開発用（Referer: `localhost`, `127.0.0.1`）は `.env.local`。出典: https://docs.carto.com/faqs/carto-basemaps
 - **付随設定**: `vite.config.ts` に本番ビルドだけ `base: '/my_travel_app/'` を付けた（開発サーバーは `/` のまま）。
+
+## 2026-10-26 GitHub Actions を Node 24 対応の版へ更新
+- **事実**: Node.js 20 で動く Action は非推奨の警告が出る。`checkout` v4 / `setup-node` v4 / `deploy-pages` v4 は Node 20 で動く。各 Action の新しい版は `action.yml` の `using` が `node24`（`upload-pages-artifact` は composite で自前の Node を持たない）。
+- **判断**: `checkout@v7`、`setup-node@v7`、`upload-pages-artifact@v5`、`deploy-pages@v5` へ上げた。バージョンは最新リリースのメジャー番号に固定する（`@v7` のように）。
+- **未確認**: 実際の Actions 上での動作。push 後に警告が消え、公開が成功するかを確認する。
