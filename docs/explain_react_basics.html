@@ -1,0 +1,223 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>React Leaflet と React の基礎</title>
+<style>
+  :root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --line:#d1d9e0; --card:#f6f8fa; --accent:#0969da; --ok:#1a7f37; --warn:#9a6700; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1; --line:#3d444d; --card:#151b23; --accent:#4493f8; --ok:#3fb950; --warn:#d29922; }
+  }
+  body { background:var(--bg); color:var(--fg); font:16px/1.75 system-ui,"Yu Gothic UI",sans-serif; margin:0; }
+  main { max-width:860px; margin:0 auto; padding:24px 16px 80px; }
+  h1 { font-size:1.6rem; } h2 { font-size:1.3rem; border-bottom:1px solid var(--line); padding-bottom:6px; margin-top:48px; }
+  h3 { font-size:1.05rem; margin-top:28px; }
+  code { background:var(--card); padding:1px 5px; border-radius:4px; font-size:.9em; }
+  pre { background:var(--card); border:1px solid var(--line); border-radius:6px; padding:12px 14px; overflow-x:auto; line-height:1.55; }
+  pre code { background:none; padding:0; }
+  table { border-collapse:collapse; width:100%; margin:12px 0; }
+  th,td { border:1px solid var(--line); padding:6px 10px; text-align:left; vertical-align:top; }
+  th { background:var(--card); }
+  .box { border:1px solid var(--line); background:var(--card); border-radius:6px; padding:10px 14px; margin:14px 0; }
+  .tag { display:inline-block; font-size:.75rem; font-weight:700; padding:0 8px; border-radius:10px; border:1px solid currentColor; margin-right:6px; }
+  .agreed { color:var(--ok); } .judge { color:var(--accent); } .unknown { color:var(--warn); }
+  nav ol { margin:0; } a { color:var(--accent); }
+</style>
+</head>
+<body>
+<main>
+<h1>React Leaflet と React の基礎</h1>
+
+<h2 id="purpose">目的</h2>
+<p>台湾鉄道マップのコードを例に、次の4点を「中身が分かる」状態にする。</p>
+<ol>
+  <li>「ラッパー」とは何か</li>
+  <li>地図の要素はどんな形式のデータで、Supabase とどう関係するか</li>
+  <li>「データから画面が決まる」とは何か</li>
+  <li><code>key</code> の役割と、このプロジェクトのディレクトリ構成・依存関係</li>
+</ol>
+<p>
+  <span class="tag agreed">事実</span>コードや設定ファイルで確認できたこと
+  <span class="tag judge">解釈</span>私の説明・たとえ
+  <span class="tag unknown">未確認</span>まだ決まっていない/読んでいないこと
+</p>
+
+<h2 id="toc">目次</h2>
+<nav><ol>
+  <li><a href="#wrapper">ラッパーとは</a></li>
+  <li><a href="#data">地図のデータ形式と Supabase</a></li>
+  <li><a href="#declarative">データから画面が決まる</a></li>
+  <li><a href="#key">key の役割</a></li>
+  <li><a href="#structure">ディレクトリ構成</a></li>
+  <li><a href="#deps">依存関係</a></li>
+</ol></nav>
+
+<h2 id="wrapper">1. ラッパーとは</h2>
+<p><b>ラッパー(wrapper)＝包み紙</b>。すでにある道具を中に包み、別の使い方ができるようにした薄い層のこと。中身の仕事は自分ではせず、内部で元の道具を呼ぶだけ。</p>
+<h3>Python でのたとえ</h3>
+<table>
+  <tr><th>ラッパー</th><th>包まれているもの</th><th>何が楽になるか</th></tr>
+  <tr><td><code>requests</code></td><td><code>urllib</code>(標準ライブラリ)</td><td>HTTP 通信を短く書ける</td></tr>
+  <tr><td><code>pandas.read_sql</code></td><td>DB ドライバ(psycopg2 など)</td><td>結果を DataFrame で受け取れる</td></tr>
+</table>
+<h3>React Leaflet の場合</h3>
+<pre><code>あなたのコード
+   │  &lt;Marker position=...&gt; のように「宣言」する
+   ▼
+react-leaflet   ← ラッパー(React の書き方 ⇔ Leaflet の呼び出しの翻訳役)
+   │  内部で L.marker(...).addTo(map) を実行
+   ▼
+leaflet         ← 本体(実際に地図を描く)</code></pre>
+<div class="box">
+  <span class="tag agreed">事実</span><code>package.json</code> の dependencies に <code>leaflet</code> と <code>react-leaflet</code> の<b>両方</b>が入っている。ラッパーは本体がないと動かないので、両方必要。
+</div>
+<p><span class="tag judge">解釈</span>「薄い」というのは、地図を描く機能を新しく作っているわけではなく、翻訳しているだけ、という意味。</p>
+
+<h2 id="data">2. 地図のデータ形式と Supabase</h2>
+<h3>まず区別: 地図の絵とデータは別物</h3>
+<table>
+  <tr><th>種類</th><th>中身</th><th>このアプリでは</th></tr>
+  <tr><td>背景地図</td><td>画像タイル(道路・地形の絵)</td><td>CARTO のサーバーから都度取得。<b>自分では保存しない</b></td></tr>
+  <tr><td>地理データ</td><td>座標＋名前などの属性</td><td>自前で保存する対象</td></tr>
+</table>
+<p>「地図の要素」にあたるのは、下の地理データ。</p>
+
+<h3>形式: GeoJSON(現在使っているもの)</h3>
+<p><span class="tag agreed">事実</span><code>public/data/stations.geojson</code> の中身(抜粋)。</p>
+<pre><code>{
+  "type": "Feature",
+  "properties": { "kind": "tra", "name": "桃園", "nameEn": "Taoyuan" },
+  "geometry":   { "type": "Point", "coordinates": [121.31378, 24.98873] }
+}</code></pre>
+<ul>
+  <li><code>geometry</code>＝形。<code>Point</code>(点)、<code>LineString</code>(線)など。</li>
+  <li><code>properties</code>＝自由な属性(テーブルの列にあたる)。</li>
+  <li><b>座標の順番は [経度, 緯度]</b>。Leaflet の <code>position</code> は [緯度, 経度] で逆。混乱しやすい点。</li>
+</ul>
+<p>型は <code>src/types/railway.ts</code> に <code>Stations = FeatureCollection&lt;Point, StationProps&gt;</code> として定義されている(事実)。データ分析の感覚では、GeoJSON は「geometry 列付きの行を並べた JSON 形式のテーブル」。</p>
+
+<h3>Supabase との関係</h3>
+<table>
+  <tr><th>データ</th><th>保存先</th><th>状態</th></tr>
+  <tr><td>鉄道路線・駅</td><td>GeoJSON ファイル(リポジトリ内 <code>public/data/</code>)</td><td><span class="tag agreed">事実</span>実装済み</td></tr>
+  <tr><td>旅行のスポット(ユーザーが登録)</td><td>Supabase(PostgreSQL)</td><td><span class="tag unknown">未確認</span>「予定」。<code>package.json</code> に Supabase のライブラリはまだない</td></tr>
+</table>
+<p>つまり「地図の要素＝全部 Supabase」ではない。<b>変わらない大量データ(鉄道)はファイル、増減するユーザーデータ(スポット)は DB</b>、という使い分け。</p>
+<div class="box">
+  <span class="tag unknown">未確認</span>スポット表の設計は未決定。候補は2つ。
+  <ul>
+    <li>A: <code>lat</code>, <code>lng</code> を数値列で持つ(単純。Leaflet にそのまま渡せる)</li>
+    <li>B: PostGIS の <code>geometry</code> 型(「半径◯km 以内」のような空間検索ができる)</li>
+  </ul>
+  ピンを立てるだけなら A で足りる。空間検索が必要になったら B を検討する、が自然な順序。
+</div>
+
+<h2 id="declarative">3. 「データから画面が決まる」</h2>
+<h3>2つの書き方</h3>
+<table>
+  <tr><th></th><th>命令的(素の Leaflet)</th><th>宣言的(React)</th></tr>
+  <tr><td>考え方</td><td>「どう変更するか」の手順を書く</td><td>「今のデータなら画面はこうなる」を書く</td></tr>
+  <tr><td>例</td><td>ピンを1本追加→1本削除→…</td><td>スポットの配列を渡す。ピンは結果として決まる</td></tr>
+  <tr><td>SQL でのたとえ</td><td>UPDATE/INSERT を順に実行</td><td>SELECT(欲しい結果の定義)</td></tr>
+</table>
+<p><span class="tag judge">解釈</span>式で書くと <b>画面 = f(データ)</b>。同じデータなら必ず同じ画面になるので、バグの原因を追うとき「データが正しいか」だけ見ればよい。</p>
+
+<h3>このプロジェクトでの実例</h3>
+<p><span class="tag agreed">事実</span><code>src/hooks/useGeoJson.ts</code> と <code>src/components/RailwayLayer.tsx</code> の流れ。</p>
+<pre><code>① 最初:   data = null          → RailwayLayer は null を返す(何も描かない)
+② fetch が完了 → setData(json)  ← データ(state)を更新するだけ
+③ React が RailwayLayer を再実行 → data がある → &lt;GeoJSON data=... /&gt; を描く</code></pre>
+<p>コード中に「線を描け」という命令はない。<b>state(状態)を更新したら、React が画面を作り直す</b>。これが「データから画面が決まる」の中身。</p>
+<table>
+  <tr><th>用語</th><th>意味</th><th>この例では</th></tr>
+  <tr><td>state</td><td>コンポーネントが持つ、変わりうるデータ</td><td><code>useState</code> の <code>data</code></td></tr>
+  <tr><td>props</td><td>親から子へ渡す入力</td><td><code>&lt;GeoJSON data=... style=... /&gt;</code> の <code>data</code> など</td></tr>
+</table>
+<p>判断の基準: 「時間とともに変わり、変わったら画面も変わるもの」は state、「親が決めて渡すもの」は props。</p>
+
+<h2 id="key">4. <code>key</code> の役割</h2>
+<p><code>map</code> で同じ部品を並べるとき、React は「どの部品がどのデータに対応するか」を覚えておく必要がある。その<b>名札が <code>key</code></b>。</p>
+<pre><code>{spots.map(spot =&gt; (
+  &lt;Marker key={spot.id} position={[spot.lat, spot.lng]} /&gt;
+))}</code></pre>
+<h3>SQL でのたとえ</h3>
+<p><code>key</code> は<b>主キー</b>と同じ発想。行(要素)を同一人物として追跡するための、変わらない一意の値。</p>
+<h3>なぜ必要か</h3>
+<p>スポットが [A, B, C] から A を削除して [B, C] になったとき:</p>
+<table>
+  <tr><th>key</th><th>React の判断</th></tr>
+  <tr><td><code>spot.id</code>(A,B,C の id)</td><td>「A のピンが消えた。B と C はそのまま」→ <b>正しい</b></td></tr>
+  <tr><td>配列の添字(0,1,2)</td><td>「0番が B に変わり、1番が C に変わり、2番が消えた」と解釈 → 余計な更新や、部品内部の状態(開いたポップアップなど)が別のスポットに引き継がれる不具合の原因</td></tr>
+</table>
+<p>ルール: <b>変わらず、重複しない値(DB の id など)を使う。</b>添字は並びが変わらないリストの場合のみ。</p>
+<div class="box">
+  <span class="tag agreed">事実</span>今のコードの <code>RailMap.tsx</code> / <code>RailwayLayer.tsx</code> には <code>map</code> による並べ描きがなく、<code>&lt;GeoJSON&gt;</code> 1つに全データを渡している。<code>key</code> はスポット機能(Supabase 連携)を作るときに初めて出てくる見込み。
+  <br><span class="tag unknown">未確認</span><code>StationLayer.tsx</code> は今回読んでいない。
+</div>
+
+<h2 id="structure">5. ディレクトリ構成</h2>
+<p><span class="tag agreed">事実</span><code>my_travel_app/</code> の実際の構成。(作業ディレクトリの <code>Taiwan_travel_app/</code> は、<code>index.html</code> と <code>spots.js</code> だけの旧版で別物。)</p>
+<pre><code>my_travel_app/
+├─ index.html          ← 入口のHTML。&lt;div id="root"&gt; があるだけ
+├─ package.json        ← 使うライブラリとコマンド一覧(Pythonの requirements.txt + Makefile)
+├─ vite.config.ts      ← ビルド/開発サーバーの設定
+├─ tsconfig*.json      ← TypeScript の設定
+├─ CLAUDE.md           ← Claude 向けのプロジェクトルール
+├─ docs/               ← decisions.md(判断記録)、learning_log.md
+├─ scripts/
+│   └─ fetch-railways.ts   ← OSMから鉄道データを取得し GeoJSON を作る(1回だけ実行)
+├─ public/data/        ← railways.geojson / stations.geojson(そのまま配信される)
+├─ src/                ← アプリ本体のソース
+│   ├─ main.tsx            ← 起動点。&lt;App /&gt; を root に載せる
+│   ├─ App.tsx             ← 画面全体(地図＋凡例)
+│   ├─ components/         ← 画面の部品
+│   │    ├─ RailMap.tsx        地図の枠と背景
+│   │    ├─ RailwayLayer.tsx   路線の線
+│   │    ├─ StationLayer.tsx   駅の点
+│   │    └─ RailLegend.tsx     凡例
+│   ├─ hooks/useGeoJson.ts ← 「GeoJSONを読み込む」処理の部品化
+│   ├─ railStyle.ts        ← 路線の種類ごとの色・太さ
+│   └─ types/railway.ts    ← 型定義
+├─ dist/               ← ビルド結果(自動生成。手で触らない)
+└─ node_modules/       ← インストール済みライブラリ(自動生成。手で触らない)</code></pre>
+<p><span class="tag judge">解釈</span>読む順番のおすすめ: <code>main.tsx</code> → <code>App.tsx</code> → <code>RailMap.tsx</code> → <code>RailwayLayer.tsx</code> → <code>useGeoJson.ts</code>。上から下へ「呼び出す側→呼ばれる側」の順に並んでいる。</p>
+
+<h2 id="deps">6. 依存関係</h2>
+<h3>コードの呼び出し関係(import)</h3>
+<pre><code>index.html
+  └ main.tsx
+      └ App.tsx
+          ├ RailMap.tsx ── react-leaflet(MapContainer, TileLayer)
+          │    ├ RailwayLayer.tsx ─┬ useGeoJson.ts ─→ fetch('data/railways.geojson')
+          │    │                   ├ railStyle.ts
+          │    │                   └ types/railway.ts
+          │    └ StationLayer.tsx
+          └ RailLegend.tsx</code></pre>
+<h3>データの流れ</h3>
+<pre><code>【事前に1回】 OSM(Overpass API) → scripts/fetch-railways.ts → public/data/*.geojson
+【実行時】     ブラウザ → useGeoJson が fetch → state → 地図に描画
+【背景地図】   ブラウザ → CARTO のタイルサーバー(都度取得)</code></pre>
+<h3>外部ライブラリ(<code>package.json</code>)</h3>
+<table>
+  <tr><th>区分</th><th>パッケージ</th><th>役割</th></tr>
+  <tr><td rowspan="3">dependencies<br>(動くのに必要)</td><td><code>react</code> / <code>react-dom</code></td><td>画面の仕組み本体 / ブラウザへの描画</td></tr>
+  <tr><td><code>leaflet</code></td><td>地図本体</td></tr>
+  <tr><td><code>react-leaflet</code></td><td>Leaflet の React ラッパー</td></tr>
+  <tr><td rowspan="4">devDependencies<br>(作る時だけ必要)</td><td><code>typescript</code>, <code>@types/*</code></td><td>型チェックと、各ライブラリの型情報</td></tr>
+  <tr><td><code>vite</code>, <code>@vitejs/plugin-react</code></td><td>開発サーバーとビルド</td></tr>
+  <tr><td><code>oxlint</code></td><td>コードの静的チェック(lint)</td></tr>
+  <tr><td><code>@types/geojson</code></td><td>GeoJSON の型</td></tr>
+</table>
+<p>Python との対応: dependencies ≒ 本番の依存、devDependencies ≒ 開発用の依存(pytest など)。</p>
+<h3>主なコマンド</h3>
+<table>
+  <tr><th>コマンド</th><th>やること</th></tr>
+  <tr><td><code>npm run dev</code></td><td>開発サーバー起動</td></tr>
+  <tr><td><code>npm run build</code></td><td>型チェック(<code>tsc</code>)→ 本番用ビルド(<code>dist/</code> を生成)</td></tr>
+  <tr><td><code>npm run lint</code></td><td>lint 実行</td></tr>
+  <tr><td><code>npm run fetch:railways</code></td><td>OSM から鉄道データを取り直す</td></tr>
+</table>
+</main>
+</body>
+</html>

@@ -1,0 +1,37 @@
+:root {
+  font-family: system-ui, 'Segoe UI', 'Noto Sans JP', sans-serif;
+  color: #222;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+.rail-map {
+  height: 100%;
+  width: 100%;
+}
+
+.rail-legend {
+  position: absolute;
+  left: 10px;
+  bottom: 24px;
+  z-index: 1000; /* Leaflet の地図レイヤー（z-index 400 前後）より上に出す */
+  margin: 0;
+  padding: 8px 12px;
+  list-style: none;
+  background: rgb(255 255 255 / 0.92);
+  border-radius: 6px;
+  box-shadow: 0 1px 4px rgb(0 0 0 / 0.3);
+  font-size: 13px;
+  line-height: 1.8;
+}
+
+.rail-legend li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
