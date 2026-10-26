@@ -31,5 +31,6 @@
 - **事実**: リポジトリ（https://github.com/oshun5292/my_travel_app）は PUBLIC。GitHub Pages は Free プランだと公開リポジトリでのみ使える（有料プランなら非公開でも可。出典: GitHub Docs「Creating a GitHub Pages site」）。公開した Pages サイトは、URL を知る誰でも見られる。
 - **判断**: main への push で GitHub Actions がビルドし、Pages へ公開する（`.github/workflows/deploy.yml`）。CARTO のキーは Actions の Secret `CARTO_API_KEY` に登録し、ビルド時に `VITE_CARTO_API_KEY` として渡す。
 - **理由**: キーをリポジトリと git 履歴に残さないため。更新が push だけで済む。
-- **注意**: キーは完成した JavaScript に埋め込まれるため、公開サイトでは誰でも見える。守るのは CARTO 側の Referer 制限（`https://oshun5292.github.io/*` のみ許可）で、公開後に設定する。
+- **注意**: キーは完成した JavaScript に埋め込まれるため、公開サイトでは誰でも見える。守るのは CARTO 側の Referer 制限で、公開後に設定する。
+- **（2026-10-26 更新）Referer 制限の書式と運用**: 書式はホスト名のみ（`oshun5292.github.io`。`https://` やパス、ポートは書かない）。`localhost` を許可するキーに公開サイトのホストは併記できないため、**キーを2本に分ける**。本番用（Referer: `oshun5292.github.io`）は GitHub の Secret `CARTO_API_KEY`、開発用（Referer: `localhost`, `127.0.0.1`）は `.env.local`。出典: https://docs.carto.com/faqs/carto-basemaps
 - **付随設定**: `vite.config.ts` に本番ビルドだけ `base: '/my_travel_app/'` を付けた（開発サーバーは `/` のまま）。

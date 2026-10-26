@@ -37,7 +37,7 @@ Vite + React + TypeScript。地図は React Leaflet（Leaflet）。
 
 ### 地図の描画
 
-- 背景は CARTO Positron（淡色）。鉄道の線を目立たせるため。API キーが必須で、`.env.local` の `VITE_CARTO_API_KEY` から読む（雛形は `.env.example`）。キーなしだと「API KEY REQUIRED」の透かしが出る。キーをコードや git に直接書かない。
+- 背景は CARTO Positron（淡色）。鉄道の線を目立たせるため。API キーが必須で、`.env.local` の `VITE_CARTO_API_KEY` から読む（雛形は `.env.example`）。キーなしだと「API KEY REQUIRED」の透かしが出る。キーをコードや git に直接書かない。キーは2本ある（本番用: Referer が `oshun5292.github.io`、GitHub の Secret `CARTO_API_KEY` に登録。開発用: Referer が `localhost` と `127.0.0.1`、`.env.local` に設定）。Referer 制限の書式はホスト名のみ。
 - 線は `preferCanvas`（Canvas 描画）。約4,600本あり、SVG では重くなるため。
 - 路線の重なり順は、`railStyle.ts` の `zIndex` で features を並べ替えて決める。駅はズーム11以上でだけ表示する。
 
